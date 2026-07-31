@@ -4,7 +4,9 @@ import jwt from 'jsonwebtoken';
 import { PrismaClient } from '@prisma/client';
 
 // Set env before any app/prisma imports
-const DATABASE_URL = 'postgresql://app:apppassword123@172.31.0.47:5432/app';
+const DATABASE_URL =
+  process.env.DATABASE_URL ||
+  'postgresql://app:mDOfcug5sQV0sNbQdXUtbhkxsAK2lBRF@172.31.0.47:5432/app';
 const JWT_SECRET = 'integration-test-secret';
 
 process.env.DATABASE_URL = DATABASE_URL;

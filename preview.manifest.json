@@ -3,7 +3,7 @@
     "backend": {
       "cwd": ".",
       "cmd": "sh",
-      "args": ["-c", "npx prisma migrate deploy && npx tsx src/server.ts"],
+      "args": ["-c", "if [ -n \"$APP_DB_HOST\" ]; then export DATABASE_URL=\"postgresql://${APP_DB_USER}:${APP_DB_PASSWORD}@${APP_DB_HOST}:${APP_DB_PORT:-5432}/${APP_DB_NAME}\"; fi && npx prisma migrate deploy && npx tsx src/server.ts"],
       "port": 8080,
       "healthCheck": {
         "path": "/health",

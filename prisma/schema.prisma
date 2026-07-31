@@ -1,0 +1,59 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id           String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  email        String    @unique @db.Citext
+  passwordHash String    @map("password_hash")
+  createdAt    DateTime  @default(now()) @map("created_at") @db.Timestamptz()
+  updatedAt    DateTime  @default(now()) @updatedAt @map("updated_at") @db.Timestamptz()
+
+  taskLists TaskList[]
+  tasks     Task[]
+
+  @@map("user")
+}
+
+model TaskList {
+  id        String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  userId    String    @map("user_id") @db.Uuid
+  name      String    @db.VarChar(120)
+  position  Float     @db.DoublePrecision
+  isInbox   Boolean   @default(false) @map("is_inbox")
+  createdAt DateTime  @default(now()) @map("created_at") @db.Timestamptz()
+  updatedAt DateTime  @default(now()) @updatedAt @map("updated_at") @db.Timestamptz()
+  deletedAt DateTime? @map("deleted_at") @db.Timestamptz()
+
+  user  User   @relation(fields: [userId], references: [id])
+  tasks Task[]
+
+  @@unique([id, userId])
+  @@map("task_list")
+}
+
+model Task {
+  id          String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  listId      String    @map("list_id") @db.Uuid
+  userId      String    @map("user_id") @db.Uuid
+  title       String    @db.VarChar(500)
+  notes       String?
+  dueAt       DateTime? @map("due_at") @db.Timestamptz()
+  priority    String    @default("none") @db.VarChar(4)
+  position    Float     @db.DoublePrecision
+  completedAt DateTime? @map("completed_at") @db.Timestamptz()
+  version     BigInt    @default(0)
+  createdAt   DateTime  @default(now()) @map("created_at") @db.Timestamptz()
+  updatedAt   DateTime  @default(now()) @updatedAt @map("updated_at") @db.Timestamptz()
+  deletedAt   DateTime? @map("deleted_at") @db.Timestamptz()
+
+  list TaskList @relation(fields: [listId, userId], references: [id, userId])
+  user User     @relation(fields: [userId], references: [id])
+
+  @@map("task")
+}

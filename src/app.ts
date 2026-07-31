@@ -1,5 +1,6 @@
 import express from 'express';
 import { errorHandler } from './middleware/errorHandler';
+import listsRouter from './modules/lists/router';
 import tasksRouter from './modules/tasks/router';
 
 const app = express();
@@ -13,6 +14,7 @@ app.get('/health', (_req, res) => {
 });
 
 // Route modules
+app.use('/v1/lists', listsRouter);
 app.use('/v1/tasks', tasksRouter);
 
 // Centralized error handler — must be registered last

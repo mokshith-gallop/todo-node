@@ -10,13 +10,12 @@ declare global {
   }
 }
 
-const JWT_SECRET = process.env.JWT_SECRET || 'dev-secret';
-
 export function authenticate(
   req: Request,
   res: Response,
   next: NextFunction
 ): void {
+  const jwtSecret = process.env.JWT_SECRET || 'dev-secret';
   const authHeader = req.headers.authorization;
 
   if (!authHeader || !authHeader.startsWith('Bearer ')) {
@@ -32,7 +31,7 @@ export function authenticate(
   const token = authHeader.slice(7); // Remove 'Bearer '
 
   try {
-    const decoded = jwt.verify(token, JWT_SECRET) as { sub: string };
+    const decoded = jwt.verify(token, jwtSecret) as { sub: string };
 
     if (!decoded.sub) {
       res.status(401).json({

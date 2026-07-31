@@ -296,6 +296,118 @@ HTTP_CODE=$(echo "$RESP" | tail -1)
 check "User B creates in User A list → 404" "404" "$HTTP_CODE"
 echo ""
 
+# ══════════════════════════════════════════════════════════════
+# ── POST /v1/lists — Create List smoke tests ─────────────────
+# ══════════════════════════════════════════════════════════════
+
+# ── Lists AC1: Create list with valid name ───────────────────
+echo "11. Lists AC1: Create list — valid name"
+RESP=$(curl -s -w "\n%{http_code}" -X POST "$BASE_URL/v1/lists" \
+  -H "Content-Type: application/json" \
+  -H "Authorization: Bearer $TOKEN_A" \
+  -d "{\"name\":\"Shopping\"}")
+HTTP_CODE=$(echo "$RESP" | tail -1)
+BODY=$(echo "$RESP" | sed '$d')
+check "returns 201" "201" "$HTTP_CODE"
+check_contains "has id (UUID)" '"id"' "$BODY"
+check_contains "name is Shopping" '"name":"Shopping"' "$BODY"
+check_contains "isInbox is false" '"isInbox":false' "$BODY"
+check_contains "has position" '"position"' "$BODY"
+check_contains "has createdAt" '"createdAt"' "$BODY"
+check_contains "has updatedAt" '"updatedAt"' "$BODY"
+check_not_contains "no userId in response" '"userId"' "$BODY"
+check_not_contains "no deletedAt in response" '"deletedAt"' "$BODY"
+echo ""
+
+# ── Lists AC2: Blank/missing name → 422 ─────────────────────
+echo "12. Lists AC2: Blank name → 422"
+RESP=$(curl -s -w "\n%{http_code}" -X POST "$BASE_URL/v1/lists" \
+  -H "Content-Type: application/json" \
+  -H "Authorization: Bearer $TOKEN_A" \
+  -d "{\"name\":\"\"}")
+HTTP_CODE=$(echo "$RESP" | tail -1)
+BODY=$(echo "$RESP" | sed '$d')
+check "returns 422" "422" "$HTTP_CODE"
+check_contains "code is VALIDATION_ERROR" '"code":"VALIDATION_ERROR"' "$BODY"
+check_contains "details mention name" '"field":"name"' "$BODY"
+
+echo "   Lists AC2: Whitespace-only name → 422"
+RESP=$(curl -s -w "\n%{http_code}" -X POST "$BASE_URL/v1/lists" \
+  -H "Content-Type: application/json" \
+  -H "Authorization: Bearer $TOKEN_A" \
+  -d "{\"name\":\"   \"}")
+HTTP_CODE=$(echo "$RESP" | tail -1)
+check "returns 422" "422" "$HTTP_CODE"
+
+echo "   Lists AC2: Missing name → 422"
+RESP=$(curl -s -w "\n%{http_code}" -X POST "$BASE_URL/v1/lists" \
+  -H "Content-Type: application/json" \
+  -H "Authorization: Bearer $TOKEN_A" \
+  -d "{}")
+HTTP_CODE=$(echo "$RESP" | tail -1)
+check "returns 422" "422" "$HTTP_CODE"
+echo ""
+
+# ── Lists AC3: Name > 120 chars → 422 ───────────────────────
+echo "13. Lists AC3: Name too long → 422"
+LONG_NAME=$(python3 -c "print('x' * 121)")
+RESP=$(curl -s -w "\n%{http_code}" -X POST "$BASE_URL/v1/lists" \
+  -H "Content-Type: application/json" \
+  -H "Authorization: Bearer $TOKEN_A" \
+  -d "{\"name\":\"$LONG_NAME\"}")
+HTTP_CODE=$(echo "$RESP" | tail -1)
+BODY=$(echo "$RESP" | sed '$d')
+check "returns 422" "422" "$HTTP_CODE"
+check_contains "details mention name" '"field":"name"' "$BODY"
+echo ""
+
+# ── Lists AC4: No auth → 401 ────────────────────────────────
+echo "14. Lists AC4: No authorization → 401"
+RESP=$(curl -s -w "\n%{http_code}" -X POST "$BASE_URL/v1/lists" \
+  -H "Content-Type: application/json" \
+  -d "{\"name\":\"No auth list\"}")
+HTTP_CODE=$(echo "$RESP" | tail -1)
+BODY=$(echo "$RESP" | sed '$d')
+check "returns 401" "401" "$HTTP_CODE"
+check_contains "code is UNAUTHORIZED" '"code":"UNAUTHORIZED"' "$BODY"
+echo ""
+
+# ── Lists AC5: Cross-user isolation ──────────────────────────
+echo "15. Lists AC5: Cross-user isolation"
+RESP=$(curl -s -w "\n%{http_code}" -X POST "$BASE_URL/v1/lists" \
+  -H "Content-Type: application/json" \
+  -H "Authorization: Bearer $TOKEN_B" \
+  -d "{\"name\":\"User B List\"}")
+HTTP_CODE=$(echo "$RESP" | tail -1)
+check "User B creates own list → 201" "201" "$HTTP_CODE"
+echo ""
+
+# ── Lists: Position ordering (bottom-append) ─────────────────
+echo "16. Lists: Position ordering — bottom-append"
+# Use a fresh user (USER_C) with no existing lists to test position ordering
+USER_C_ID="33333333-3333-3333-3333-333333333333"
+run_sql "INSERT INTO \\\"user\\\" (id, email, password_hash) VALUES ('$USER_C_ID', 'userc@smoke.test', 'h')"
+TOKEN_C=$(make_token "$USER_C_ID")
+
+RESP=$(curl -s -w "\n%{http_code}" -X POST "$BASE_URL/v1/lists" \
+  -H "Content-Type: application/json" \
+  -H "Authorization: Bearer $TOKEN_C" \
+  -d "{\"name\":\"First\"}")
+HTTP_CODE=$(echo "$RESP" | tail -1)
+BODY=$(echo "$RESP" | sed '$d')
+check "first list returns 201" "201" "$HTTP_CODE"
+check_contains "first list position is 1024" '"position":1024' "$BODY"
+
+RESP=$(curl -s -w "\n%{http_code}" -X POST "$BASE_URL/v1/lists" \
+  -H "Content-Type: application/json" \
+  -H "Authorization: Bearer $TOKEN_C" \
+  -d "{\"name\":\"Second\"}")
+HTTP_CODE=$(echo "$RESP" | tail -1)
+BODY=$(echo "$RESP" | sed '$d')
+check "second list returns 201" "201" "$HTTP_CODE"
+check_contains "second list position is 2048" '"position":2048' "$BODY"
+echo ""
+
 # ── Summary ──────────────────────────────────────────────────
 echo "========================================"
 echo "Checks: $CHECKS  |  Failures: $FAILURES"
